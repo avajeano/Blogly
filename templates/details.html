@@ -8,4 +8,14 @@
         <button formaction="/users/{{user.id}}/edit" formmethod="GET">Edit User</button>
         <button formaction="/users/{{user.id}}/delete" formmethod="POST">Delete User</button>
     </form>
+
+    <h3>Posts</h3>
+        <ul>
+            {% for post in user.posts %}
+            <li>
+                <a href="/posts/{{ post.id}}">{{post.title}}</a>
+            </li>
+            {% endfor %}
+        </ul>
+    <button><a href="/users/{{user.id}}/posts_new">Add Post</a></button>
 {% endblock %}

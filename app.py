@@ -2,7 +2,7 @@
 
 from flask import Flask, render_template, request, session, redirect
 from flask_debugtoolbar import DebugToolbarExtension
-from models import db, connect_db, User
+from models import db, connect_db, User, Post
 
 app = Flask(__name__)
 
@@ -77,4 +77,57 @@ def handle_delete_user(user_id):
     db.session.delete(user)
     db.session.commit()
 
+    return redirect("/users")
+
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+"""Post routes"""
+
+@app.route('/users/<int:user_id>/posts_new')
+def user_post_form(user_id):
+    """Shows the user post form."""
+    user = User.query.get_or_404(user_id)
+    return render_template('posts_new.html', user=user)
+
+@app.route('/users/<int:user_id>/posts_new', methods=["POST"])
+def handle_new_post(user_id):
+    """Handle the user new post form."""
+    user = User.query.get_or_404(user_id)
+    new_post = Post(title=request.form['post_title'],
+                    content=request.form['post_content'],
+                    user=user)
+    
+    db.session.add(new_post)
+    db.session.commit()
+    return redirect("/users")
+
+@app.route('/posts/<post_id>')
+def post_details(post_id):
+    """Show the details for the post."""
+    post = Post.query.get_or_404(post_id)
+    return render_template('posts.html', post=post)
+
+@app.route('/posts/<post_id>/edit')
+def edit_post(post_id):
+    """Show the edit post form."""
+    post = Post.query.get_or_404(post_id)
+    return render_template('edit_post.html', post=post)
+
+@app.route('/posts/<post_id>/edit', methods=["POST"])
+def hanlde_edit_post(post_id):
+    """Handle the edit post form."""
+    post = Post.query.get_or_404(post_id)
+    post.title = request.form["post_title"]
+    post.content = request.form["post_content"]
+
+    db.session.add(post)
+    db.session.commit()
+    return redirect(f"/users/{post.user_id}")
+
+@app.route('/posts/<post_id>/delete', methods=["POST"])
+def delete_post(post_id):
+    """Delete post."""
+    post = Post.query.get_or_404(post_id)
+
+    db.session.delete(post)
+    db.session.commit()
     return redirect("/users")

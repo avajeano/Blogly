@@ -1,7 +1,7 @@
 from unittest import TestCase
 
 from app import app
-from models import db, User
+from models import db, User, Post
 
 app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql:///bogly_test'
 
@@ -15,8 +15,6 @@ class UserViewsTestCase(TestCase):
 
     def setUp(self):
         """Add sample user."""
-
-        User.query.delete()
 
         user = User(first_name="TestFirstName", last_name="TestLastName", image_url="https://img.freepik.com/free-vector/user-blue-gradient_78370-4692.jpg?w=826&t=st=1712240115~exp=1712240715~hmac=ec275943900481bfc64f790c547f043f8554bf3398e6cf2fab36de9dc3f590ce")
         db.session.add(user)
@@ -40,14 +38,12 @@ class UserViewsTestCase(TestCase):
     def test_show_user(self):
         with app.test_client() as client:
             resp = client.get(f"/{self.user_id}")
-            html = resp.get_data(as_text=True)
             self.assertEqual(resp.status_code, 200)
 
     def test_add_user(self):
         with app.test_client() as client:
             d = {"first_name": "TestFirstName2", "last_name": "TestLastName2", "image_url":"https://img.freepik.com/free-vector/user-blue-gradient_78370-4692.jpg?w=826&t=st=1712240115~exp=1712240715~hmac=ec275943900481bfc64f790c547f043f8554bf3398e6cf2fab36de9dc3f590ce"}
             resp = client.post(f"/users/{self.user_id}/edit", data=d, follow_redirects=True)
-            html = resp.get_data(as_text=True)
 
             self.assertEqual(resp.status_code, 200)
     
@@ -57,3 +53,58 @@ class UserViewsTestCase(TestCase):
             deleted_user = User.query.get(self.user_id)
 
             self.assertIsNone(deleted_user)
+
+class PostViewsTestCase(TestCase):
+    """Tests posts for users."""
+
+    def setUp(self):
+        """Add sample post and user."""
+
+        Post.query.delete()
+
+        user = User(first_name="TestFirstName2", last_name="TestLastName2")
+        db.session.add(user)
+        db.session.commit()
+        self.user_id = user.id 
+        
+        post = Post(title="TestTitle", content="TestContent", created_at="2024-04-07 22:57:15.356279", user_id=self.user_id)
+        db.session.add(post)
+        db.session.commit()
+
+        self.post_id = post.id 
+
+    def tearDown(self):
+        """Clean up any fouled transaction."""
+
+        db.session.rollback()
+
+    def test_list_posts(self):
+        with app.test_client() as client:
+            resp = client.get(f"/{self.user_id}")
+            html = resp.get_data(as_text=True)
+
+            self.assertEqual(resp.status_code, 200)
+            self.assertIn('TestTitle', html)
+
+    def test_show_post(self):
+        with app.test_client() as client:
+            resp = client.get(f"/posts/{self.post_id}")
+
+            self.assertEqual(resp.status_code, 200)
+
+    def test_add_post(self):
+        with app.test_client() as client:
+            resp = client.get(f"users/{self.post_id}/posts_new")
+            self.assertEqual(resp.status_code, 200)
+    
+    def test_edit_post(self):
+        with app.test_client() as client:
+            resp = client.get(f"/posts/{self.post_id}/edit")
+            self.assertEqual(resp.status_code, 200)
+
+    def test_delete_post(self):
+        with app.test_client() as client:
+            resp = client.post(f"posts/{self.post_id}/delete", follow_redirects=True)
+            deleted_post = Post.query.get(self.post_id)
+            self.assertIsNone(deleted_post)
+            self.assertEqual(resp.status_code, 200)
