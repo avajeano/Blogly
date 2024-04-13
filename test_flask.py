@@ -1,7 +1,7 @@
 from unittest import TestCase
 
 from app import app
-from models import db, User, Post
+from models import db, User, Post, Tag
 
 app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql:///bogly_test'
 
@@ -107,4 +107,55 @@ class PostViewsTestCase(TestCase):
             resp = client.post(f"posts/{self.post_id}/delete", follow_redirects=True)
             deleted_post = Post.query.get(self.post_id)
             self.assertIsNone(deleted_post)
+            self.assertEqual(resp.status_code, 200)
+
+class TagViewsTestCase(TestCase):
+    """Tests tags for posts."""
+
+    def setUp(self):
+        self.tag = Tag(tag_name="TestTag")
+        db.session.add(self.tag)
+        db.session.commit()
+
+    def tearDown(self):
+        db.session.remove()
+        db.drop_all()
+
+    def test_view_tags(self):
+        with app.test_client() as client:
+            resp = client.get('/tags')
+            html = resp.get_data(as_text=True)
+
+            self.assertEqual(resp.status_code, 200)
+            self.assertIn('TestTag', html)
+    
+    def test_new_tag_form(self):
+        with app.test_client() as client:
+            resp = client.get('/tags_new')
+
+            self.assertEqual(resp.status_code, 200)
+
+    def test_create_tag(self):
+        with app.test_client() as client:
+            resp = client.post('/tags_new', data={'tag_name': 'NewTestTag'}, follow_redirects=True)
+            self.assertEqual(resp.status_code, 200)
+
+            tag = Tag.query.filter_by(tag_name='NewTestTag').first()
+            self.assertIsNotNone(tag)
+
+    def test_show_tag_details(self):
+        with app.test_client() as client:
+            resp = client.get('/tags/1')
+            self.assertEqual(resp.status_code, 200)
+
+    def test_edit_tag_form(self):
+        with app.test_client() as client:
+            resp = client.get('tags/1/edit')
+            self.assertEqual(resp.status_code, 200)
+
+    def test_delete_tag(self):
+        with app.test_client() as client:
+            resp = client.post('tags/1/delete', follow_redirects=True)
+            deleted_tag = Tag.query.get(1)
+            self.assertIsNone(deleted_tag)
             self.assertEqual(resp.status_code, 200)
